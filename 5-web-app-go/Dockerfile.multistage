@@ -1,0 +1,33 @@
+### Build stage ###
+
+# We call this stage "build"
+# Note: This image is based on debian:buster
+FROM golang:1.16-buster AS build
+
+WORKDIR /app
+
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
+COPY *.go ./
+
+# Build application binary
+RUN go build -o /web-app-ping
+
+
+### Deploy stage ###
+
+# Same OS as image in previous stage
+FROM debian:buster
+
+WORKDIR /
+
+# Copy application binary from previous stage
+COPY --from=build /web-app-ping /web-app-ping
+
+EXPOSE 8080
+
+USER 1000
+
+ENTRYPOINT ["/web-app-ping"]

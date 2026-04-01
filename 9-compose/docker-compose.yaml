@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  app1:
+    image: nginx
+    ports: 
+    - 8080:80
+    volumes: 
+    - demo-volume:/tmp
+    networks: 
+    - demo-network
+
+  app2:
+    image: ubuntu
+    command: ["sleep", "360"]
+    volumes: 
+    - demo-volume:/tmp
+    networks: 
+    - demo-network
+
+volumes:
+  demo-volume:
+
+# Network created by default
+networks:
+ demo-network:
