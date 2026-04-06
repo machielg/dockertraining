@@ -8,6 +8,8 @@ RUN go mod download
 
 COPY *.go ./
 
+LABEL foo=bar
+
 # Build application binary
 RUN go build -o /web-app-ping
 
