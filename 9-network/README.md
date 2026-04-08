@@ -20,7 +20,7 @@ In one terminal, start the first container:
 docker run -dit --name container1 --network my-net alpine sh
 ```
 
-In another terminal, start the second container:
+Start the second container
 
 ```bash
 docker run -dit --name container2 --network my-net alpine sh

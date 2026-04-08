@@ -41,47 +41,13 @@ container-structure-test version
 
 ---
 
-## Part 1 - Build a sample image
+## Part 1 - Understand the test files
 
-Create a `Dockerfile`:
+The test files for this lab are already provided. Before writing any code, read through each one to understand what they expect from the image.
 
-```Dockerfile
-FROM alpine:3.20
+### Command Tests (`test-commands.yaml`)
 
-RUN apk add --no-cache curl jq
-
-ENV APP_ENV=production
-ENV APP_PORT=8080
-
-LABEL maintainer="training@eduvision.nl"
-LABEL version="1.0"
-
-RUN mkdir -p /app/config && \
-    echo '{"name": "demo-app", "version": "1.0"}' > /app/config/app.json
-
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN chown -R appuser:appgroup /app
-
-WORKDIR /app
-
-USER appuser
-
-CMD ["sh", "-c", "echo 'App is running'"]
-```
-
-Build the image:
-
-```bash
-docker build -t test-app:1.0 .
-```
-
----
-
-## Part 2 - Command Tests
-
-Command tests run a command inside the image and check the output.
-
-Create `test-commands.yaml`:
+These tests run commands inside the image and check the output:
 
 ```yaml
 schemaVersion: "2.0.0"
@@ -106,25 +72,15 @@ commandTests:
     expectedOutput: ["demo-app"]
 
   # Test that a command is NOT available
-  - name: "wget is not installed"
+  - name: "foo is not installed"
     command: "which"
-    args: ["wget"]
+    args: ["foo"]
     exitCode: 1
 ```
 
-Run the tests:
+### File Existence Tests (`test-files.yaml`)
 
-```bash
-container-structure-test test --image test-app:1.0 --config test-commands.yaml
-```
-
----
-
-## Part 3 - File Existence Tests
-
-Verify that files and directories exist with the correct ownership and permissions.
-
-Create `test-files.yaml`:
+These verify that files and directories exist with the correct ownership and permissions:
 
 ```yaml
 schemaVersion: "2.0.0"
@@ -142,7 +98,6 @@ fileExistenceTests:
   - name: "app directory exists"
     path: "/app"
     shouldExist: true
-    isDirectory: true
 
   # Ensure no secrets are accidentally included
   - name: "no .env file"
@@ -154,19 +109,9 @@ fileExistenceTests:
     shouldExist: false
 ```
 
-Run the tests:
+### File Content Tests (`test-file-content.yaml`)
 
-```bash
-container-structure-test test --image test-app:1.0 --config test-files.yaml
-```
-
----
-
-## Part 4 - File Content Tests
-
-Check the actual contents of files inside the image.
-
-Create `test-file-content.yaml`:
+These check the actual contents of files inside the image:
 
 ```yaml
 schemaVersion: "2.0.0"
@@ -187,30 +132,26 @@ fileContentTests:
     excludedContents: ["debug"]
 ```
 
-Run the tests:
+### Metadata Tests (`test-metadata.yaml`)
 
-```bash
-container-structure-test test --image test-app:1.0 --config test-file-content.yaml
-```
-
----
-
-## Part 5 - Metadata Tests
-
-Validate image metadata like environment variables, entrypoint, cmd, exposed ports, labels, user, and workdir.
-
-Create `test-metadata.yaml`:
+These validate image metadata like environment variables, labels, cmd, user, and workdir:
 
 ```yaml
 schemaVersion: "2.0.0"
 
 metadataTest:
   # Environment variables
-  env:
+  envVars:
     - key: "APP_ENV"
       value: "production"
     - key: "APP_PORT"
       value: "8080"
+
+  # Exposed ports
+  exposedPorts:
+    - "8080"
+  unexposedPorts:
+    - "22"
 
   # Labels
   labels:
@@ -229,17 +170,44 @@ metadataTest:
   user: "appuser"
 ```
 
-Run the tests:
+---
+
+## Part 2 - Write a Dockerfile that passes all tests
+
+Now that you understand what the tests expect, create a `Dockerfile` that makes all tests pass.
+
+**Hints:**
+
+- Use `alpine:3.20` as your base image
+- Read the test files carefully — they tell you exactly what packages, files, environment variables, labels, users, and permissions are expected
+- Pay attention to file ownership (`uid`/`gid`) in the file existence tests
+
+Build your image:
 
 ```bash
-container-structure-test test --image test-app:1.0 --config test-metadata.yaml
+docker build -t test-app:1.0 .
 ```
 
 ---
 
-## Part 6 - Run all tests together
+## Part 3 - Run the tests
 
-You can pass multiple config files in a single run:
+Run each test file individually to see which tests pass and which fail:
+
+```bash
+container-structure-test test --image test-app:1.0 --config test-commands.yaml
+container-structure-test test --image test-app:1.0 --config test-files.yaml
+container-structure-test test --image test-app:1.0 --config test-file-content.yaml
+container-structure-test test --image test-app:1.0 --config test-metadata.yaml
+```
+
+Fix your Dockerfile, rebuild, and rerun until all tests pass.
+
+---
+
+## Part 4 - Run all tests together
+
+Once all individual test files pass, run them all in a single command:
 
 ```bash
 container-structure-test test \
@@ -249,36 +217,6 @@ container-structure-test test \
   --config test-file-content.yaml \
   --config test-metadata.yaml
 ```
-
-Or combine everything into a single `test-all.yaml` file.
-
----
-
-## Part 7 - Make a test fail
-
-Try breaking something and see how the tool reports it.
-
-### Exercise A: Remove a package
-
-Edit the Dockerfile and remove `jq` from the `apk add` line. Rebuild and rerun:
-
-```bash
-docker build -t test-app:1.0 .
-container-structure-test test --image test-app:1.0 --config test-commands.yaml
-```
-
-You should see the "jq is installed" test fail.
-
-### Exercise B: Change an environment variable
-
-Change `APP_ENV` to `development` in the Dockerfile. Rebuild and rerun:
-
-```bash
-docker build -t test-app:1.0 .
-container-structure-test test --image test-app:1.0 --config test-metadata.yaml
-```
-
-The metadata test for `APP_ENV` should fail.
 
 ---
 

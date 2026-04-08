@@ -43,6 +43,6 @@ Now start wordpress again with `docker-compose up -d` and verify your webpage st
 
 ```shell
 docker-compose rm --stop --force
-docker system prune --volume 
+docker system prune --volumes
 
 ```

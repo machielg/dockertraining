@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Two services (containers) are defined
 services:
   db:                                     # Name of the service
